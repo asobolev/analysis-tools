@@ -60,8 +60,8 @@ def loadFolder(folderpath,**kwargs):
             data[f.replace('.continuous','')] = loadContinuous(os.path.join(folderpath, f))
             numFiles += 1
 
-    print ''.join(('Avg. Load Time: ', str((time.time() - t0)/numFiles),' sec'))
-    print ''.join(('Total Load Time: ', str((time.time() - t0)),' sec'))        
+    print(''.join(('Avg. Load Time: ', str((time.time() - t0)/numFiles),' sec')))
+    print(''.join(('Total Load Time: ', str((time.time() - t0)),' sec')))
             
     return data
 
@@ -119,8 +119,8 @@ def loadFolderToArray(folderpath, channels='all', dtype=float,
     
     if verbose:
         time_taken = time.time() - t0
-        print 'Avg. Load Time: %0.3f sec' % (time_taken / len(filelist))
-        print 'Total Load Time: %0.3f sec' % time_taken
+        print('Avg. Load Time: %0.3f sec' % (time_taken / len(filelist)))
+        print('Total Load Time: %0.3f sec' % time_taken)
 
     return data_array
 
@@ -169,7 +169,7 @@ def loadContinuous(filepath, dtype=float, verbose=True,
         raise ValueError("Invalid data type. Must be float or np.int16")
 
     if verbose:
-        print "Loading continuous data from " + filepath
+        print("Loading continuous data from " + filepath)
 
     """Here is the OpenEphys file format:
     'each record contains one 64-bit timestamp, one 16-bit sample 
@@ -186,9 +186,10 @@ def loadContinuous(filepath, dtype=float, verbose=True,
     samples = []
     samples_read = 0
     records_read = 0
+    percent_completed = 0
     
     # Open the file
-    with file(filepath, 'rb') as f:
+    with open(filepath, 'rb') as f:
         # Read header info, file length, and number of records
         header = readHeader(f)
         record_length_bytes = 2 * header['blockLength'] + 22
@@ -253,6 +254,11 @@ def loadContinuous(filepath, dtype=float, verbose=True,
             # Update the count
             samples_read += len(samples)            
             records_read += 1
+            
+            completed = round((records_read / n_records) * 100)
+            if completed > percent_completed:
+                percent_completed = completed
+                print("Completed: %d" % completed)
 
     # Concatenate results, or empty arrays if no data read (which happens
     # if start_sample is after the end of the data stream)
@@ -271,7 +277,7 @@ def loadSpikes(filepath):
     
     data = { }
     
-    print 'loading spikes...'
+    print('loading spikes...')
     
     f = open(filepath,'rb')
     header = readHeader(f)
@@ -335,7 +341,7 @@ def loadEvents(filepath):
 
     data = { }
     
-    print 'loading events...'
+    print('loading events...')
     
     f = open(filepath,'rb')
     header = readHeader(f)
@@ -405,7 +411,7 @@ def readHeader(f):
     # Remove newlines and redundant "header." prefixes
     # The result should be a series of "key = value" strings, separated
     # by semicolons.
-    header_string = f.read(1024).replace('\n','').replace('header.','')
+    header_string = f.read(1024).decode("utf-8").replace('\n','').replace('header.','')
     
     # Parse each key = value string separately
     for pair in header_string.split(';'):
@@ -491,7 +497,7 @@ def pack(folderpath, filename='openephys.dat', dref=None,
     # Manually remove the output file if it exists (later we append)
     if os.path.exists(filename):
         if verbose:
-            print "overwriting %s" % filename
+            print("overwriting %s" % filename)
         os.remove(filename)
     
     # Iterate over chunks
@@ -499,7 +505,7 @@ def pack(folderpath, filename='openephys.dat', dref=None,
         # Determine where the chunk stops
         chunk_stop = np.min([stop_record, chunk_start + chunk_size])
         if verbose:
-            print "loading chunk from %d to %d" % (chunk_start, chunk_stop)
+            print("loading chunk from %d to %d" % (chunk_start, chunk_stop))
         
         # Load the chunk
         data_array = loadFolderToArray(folderpath, dtype=np.int16,
@@ -586,7 +592,7 @@ def _get_sorted_channels(folderpath, recording=None):
 
 def get_number_of_records(filepath):
     # Open the file
-    with file(filepath, 'rb') as f:
+    with open(filepath, 'rb') as f:
         # Read header info
         header = readHeader(f)
         
