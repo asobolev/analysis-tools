@@ -71,7 +71,7 @@ def loadFolder(folderpath,**kwargs):
 
     return data
 
-def loadFolderToArray(folderpath, channels = 'all', dtype = float, source = '100'):
+def loadFolderToArray(folderpath, channels = 'all', dtype = float, source = '100', down=None):
     '''Load CH continuous files in specified folder to a single numpy array. By default all
     CH continous files are loaded in numerical order, ordering can be specified with
     optional channels argument which should be a list of channel numbers.'''
@@ -84,7 +84,7 @@ def loadFolderToArray(folderpath, channels = 'all', dtype = float, source = '100
     t0 = time.time()
     numFiles = 1
 
-    channel_1_data = loadContinuous(os.path.join(folderpath, filelist[0]), dtype)['data']
+    channel_1_data = loadContinuous(os.path.join(folderpath, filelist[0]), dtype, down)['data']
 
     n_samples  = len(channel_1_data)
     n_channels = len(filelist)
@@ -93,7 +93,7 @@ def loadFolderToArray(folderpath, channels = 'all', dtype = float, source = '100
     data_array[:,0] = channel_1_data
 
     for i, f in enumerate(filelist[1:]):
-            data_array[:, i + 1] = loadContinuous(os.path.join(folderpath, f), dtype)['data']
+            data_array[:, i + 1] = loadContinuous(os.path.join(folderpath, f), dtype, down)['data']
             numFiles += 1
 
     print(''.join(('Avg. Load Time: ', str((time.time() - t0)/numFiles),' sec')))
@@ -101,7 +101,7 @@ def loadFolderToArray(folderpath, channels = 'all', dtype = float, source = '100
 
     return data_array
 
-def loadContinuous(filepath, dtype = float):
+def loadContinuous(filepath, dtype = float, down=None):
 
     assert dtype in (float, np.int16), \
       'Invalid data type specified for loadContinous, valid types are float and np.int16'
@@ -156,7 +156,7 @@ def loadContinuous(filepath, dtype = float):
 
     ch['header'] = header
     ch['timestamps'] = timestamps
-    ch['data'] = samples  # OR use downsample(samples,1), to save space
+    ch['data'] = downsample(samples, down) if down else samples
     ch['recordingNumber'] = recordingNumbers
     f.close()
     return ch
@@ -283,9 +283,8 @@ def readHeader(f):
             header[item.split(' = ')[0]] = item.split(' = ')[1]
     return header
 
-def downsample(trace,down):
-    downsampled = scipy.signal.resample(trace,np.shape(trace)[0]/down)
-    return downsampled
+def downsample(trace, down):
+    return scipy.signal.decimate(trace, down)  # .decimate is ~10**3 times faster than .resample
 
 def pack(folderpath,source='100',**kwargs):
 #convert single channel open ephys channels to a .dat file for compatibility with the KlustaSuite, Neuroscope and Klusters
@@ -395,7 +394,7 @@ class ProgressBar:
         return str(self.prog_bar)
 #*************************************************************
 
-def pack_2(folderpath, filename = 'openephys.dat', source='100', channels = 'all', dref = None):
+def pack_2(folderpath, filename = 'openephys.dat', source='100', channels = 'all', dref = None, down=None):
 
     '''Alternative version of pack which uses numpy's tofile function to write data.
     pack_2 is much faster than pack and avoids quantization noise incurred in pack due
@@ -410,9 +409,11 @@ def pack_2(folderpath, filename = 'openephys.dat', source='100', channels = 'all
 
     dref:  Digital referencing - either supply a channel number or 'ave' to reference to the
            average of packed channels.
+
+    down:  Downsampling factor. Leave None to store an original signal.
     '''
 
-    data_array = loadFolderToArray(folderpath, channels, np.int16, source)
+    data_array = loadFolderToArray(folderpath, channels, np.int16, source, down)
 
     if dref:
         if dref == 'ave':
